@@ -18,11 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 public class MailService {
 
-    private final JavaMailSender javaMailSender;
-
-    @Value("${spring.mail.username}")
-    private String senderEmail;
-
+    private final GmailService gmailService;
     private final Map<String, String> verificationStorage = new ConcurrentHashMap<>();
 
     // 인증번호 생성 (6자리 숫자)
@@ -36,14 +32,8 @@ public class MailService {
         return key.toString();
     }
 
-    // 메일 생성
-    public MimeMessage createMail(String mail, String number) throws MessagingException {
-        MimeMessage message = javaMailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-        helper.setFrom(senderEmail);
-        helper.setTo(mail);
-        helper.setSubject("[벼리] 이메일 인증 번호 안내");
+    // 메일 내용 생성
+    private String createBody(String number) {
         String body = "";
         body += "<h3 style='color: #333333; font-size: 16px; font-weight: normal;'>요청하신 인증 번호입니다.</h3>";
         body += "<div style='background-color: #f9f9f9; padding: 30px; margin: 20px 0; text-align: center; border-radius: 10px;'>";
@@ -52,21 +42,19 @@ public class MailService {
         body += "</div>";
         body += "<p style='font-size: 14px; color: #666666;'>인증 번호를 입력창에 정확히 입력해 주세요. 감사합니다.</p>";
         body += "</div>";
-        helper.setText(body, true);
-
-        return message;
+        return body;
     }
 
     // 메일 발송
     public String sendSimpleMessage(String sendEmail) throws MessagingException {
         String number = createNumber();
-        MimeMessage message = createMail(sendEmail, number);
+        String body = createBody(number);
         try {
-            javaMailSender.send(message);
+            gmailService.sendEmail(sendEmail, "[벼리] 이메일 인증 번호 안내", body);
             verificationStorage.put(sendEmail, number); // 메모리에 저장
         } catch (Exception e) {
             log.error("메일 발송 오류", e);
-            throw new IllegalArgumentException("메일 발송 중 오류가 발생했습니다.");
+            throw new IllegalArgumentException("메일 발송 중 오류가 발생했습니다: " + e.getMessage());
         }
         return number;
     }
@@ -83,9 +71,9 @@ public class MailService {
 
     public void sendPinCode(String to, String code) {
         try {
-            MimeMessage message = createMail(to, code);
-            javaMailSender.send(message);
-        } catch (MessagingException e) {
+            String body = "<h3 style='color: #333333;'>PIN Code: " + code + "</h3>";
+            gmailService.sendEmail(to, "[벼리] PIN 코드 안내", body);
+        } catch (Exception e) {
             log.error("PIN 메일 발송 오류", e);
             throw new IllegalArgumentException("메일 발송 중 오류가 발생했습니다.");
         }
