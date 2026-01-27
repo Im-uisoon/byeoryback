@@ -18,6 +18,10 @@ public interface PostRepository extends JpaRepository<Post, Long> {
         // ✨ [New] 개인 기록만 조회 (그룹 활동 제외)
         List<Post> findAllByUserIdAndRoomIsNullOrderByCreatedAtDesc(Long userId);
 
+        // [Optimization] 개인 기록 ID만 조회 (Sort Buffer Overflow 방지)
+        @Query("SELECT p.id FROM Post p WHERE p.user.id = :userId AND p.room IS NULL ORDER BY p.createdAt DESC")
+        List<Long> findIdsByUserIdAndRoomIsNullOrderByCreatedAtDesc(@Param("userId") Long userId);
+
         // 유저의 게시글 수 카운트
         long countByUserId(Long userId);
 
@@ -42,6 +46,16 @@ public interface PostRepository extends JpaRepository<Post, Long> {
                         "JOIN ph.hashtag h " +
                         "WHERE p.isPublic = true AND h.name = :hashtag")
         Page<Post> findByIsPublicTrueAndHashtag(@Param("hashtag") String hashtag, Pageable pageable);
+
+        // [Optimization] ID만 먼저 조회 (Sort Buffer Overflow 방지)
+        @Query("SELECT p.id FROM Post p WHERE p.isPublic = true")
+        Page<Long> findIdsByIsPublicTrue(Pageable pageable);
+
+        @Query("SELECT p.id FROM Post p " +
+                        "JOIN p.postHashtags ph " +
+                        "JOIN ph.hashtag h " +
+                        "WHERE p.isPublic = true AND h.name = :hashtag")
+        Page<Long> findIdsByIsPublicTrueAndHashtag(@Param("hashtag") String hashtag, Pageable pageable);
 
         // 기간별(월별) 내 게시글 조회
         List<Post> findByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(Long userId, LocalDateTime start,

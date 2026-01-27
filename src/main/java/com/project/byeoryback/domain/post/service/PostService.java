@@ -41,9 +41,24 @@ public class PostService {
 
     // [New] 특정 유저의 게시글만 조회 (그룹 활동 제외, 순수 개인 기록만)
     public List<Post> getPostsByUserId(Long userId) {
-        // 기존: findAllByUserIdOrderByCreatedAtDesc(userId) -> 그룹 활동 포함됨
-        // 수정: findAllByUserIdAndRoomIsNullOrderByCreatedAtDesc(userId) -> 개인 기록만
-        return postRepository.findAllByUserIdAndRoomIsNullOrderByCreatedAtDesc(userId);
+        // [Optimization] 1. ID만 먼저 조회 (Index Scan, Lightweight)
+        List<Long> ids = postRepository.findIdsByUserIdAndRoomIsNullOrderByCreatedAtDesc(userId);
+
+        if (ids.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+
+        // [Optimization] 2. 실제 데이터 조회
+        List<Post> posts = postRepository.findAllById(ids);
+
+        // 3. 메모리 내 재정렬 (ID 리스트 순서에 맞춤)
+        java.util.Map<Long, Post> postMap = posts.stream()
+                .collect(java.util.stream.Collectors.toMap(Post::getId, java.util.function.Function.identity()));
+
+        return ids.stream()
+                .map(postMap::get)
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toList());
     }
 
     // 2. 게시글 생성

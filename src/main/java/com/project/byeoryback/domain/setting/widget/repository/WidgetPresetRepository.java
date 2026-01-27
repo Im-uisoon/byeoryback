@@ -7,4 +7,6 @@ import java.util.List;
 
 public interface WidgetPresetRepository extends JpaRepository<WidgetPreset, Long> {
     List<WidgetPreset> findAllByUserOrderByCreatedAtDesc(User user);
+
+    void deleteByUser(User user);
 }

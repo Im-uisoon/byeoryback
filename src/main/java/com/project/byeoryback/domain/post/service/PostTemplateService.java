@@ -29,7 +29,6 @@ public class PostTemplateService {
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         List<PostTemplate> templates = postTemplateRepository.findAllByUserOrderByCreatedAtDesc(user);
-        System.out.println("DEBUG: Fetch all templates count: " + templates.size() + ", showHidden: " + showHidden);
 
         // ✨ 1. Sync Missing Purchases (Retroactive Fix)
         try {

@@ -57,15 +57,7 @@ public class MarketDataInitializer {
                                                         "tags", Arrays.asList("빈티지", "라벨", "브라운"),
                                                         "imageUrl",
                                                         "https://cdn-icons-png.flaticon.com/512/2361/2361730.png"),
-                                        Map.of(
-                                                        "referenceId", "widget_template_001",
-                                                        "category", "template_widget",
-                                                        "name", "미니멀 시계 & 투두",
-                                                        "description", "책상 위를 깔끔하게 정리해주는 미니멀 위젯 세트입니다.",
-                                                        "price", 3000L,
-                                                        "tags", Arrays.asList("미니멀", "위젯", "생산성"),
-                                                        "imageUrl",
-                                                        "https://cdn-icons-png.flaticon.com/512/12117/12117188.png"),
+                                        // Removed dummy widget_template_001
                                         Map.of(
                                                         "referenceId", "post_template_001",
                                                         "category", "template_post",

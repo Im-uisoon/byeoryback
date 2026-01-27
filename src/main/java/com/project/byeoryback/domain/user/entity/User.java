@@ -131,4 +131,8 @@ public class User {
         return true;
     }
 
+    public void removePin() {
+        this.pin = null;
+    }
+
 }

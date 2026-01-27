@@ -53,6 +53,7 @@ public class CommunityService {
         // DTO 변환 시 Post와 PostStat 정보 합침
         return CommunityDto.Response.from(post, postStat, isLiked);
     }
+
     @Transactional // 조회만 하므로 readOnly 권장
     public CommunityDto.Response getCommunityForCard(Long postId, Long userId) {
         Post post = postRepository.findById(postId)
@@ -85,13 +86,15 @@ public class CommunityService {
 
         return CommunityDto.Response.from(post, postStat, isLiked);
     }
+
     @Transactional
-    public void increaseViewCount(Long postId) {PostStat postStat = postStatRepository.findByPostId(postId)
-            .orElseGet(() -> {
-                Post post = postRepository.findById(postId)
-                        .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 없습니다."));
-                return postStatRepository.save(PostStat.builder().post(post).build());
-            });
+    public void increaseViewCount(Long postId) {
+        PostStat postStat = postStatRepository.findByPostId(postId)
+                .orElseGet(() -> {
+                    Post post = postRepository.findById(postId)
+                            .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 없습니다."));
+                    return postStatRepository.save(PostStat.builder().post(post).build());
+                });
 
         postStat.increaseViewCount(); // Dirty Checking으로 자동 업데이트
     }
@@ -109,15 +112,36 @@ public class CommunityService {
     public org.springframework.data.domain.Page<CommunityDto.Response> getCommunityList(
             org.springframework.data.domain.Pageable pageable, Long userId, String hashtag) {
 
-        org.springframework.data.domain.Page<Post> postPage;
-
+        // [Optimization] 1. ID만 먼저 조회 (Index Scan, Lightweight)
+        org.springframework.data.domain.Page<Long> idPage;
         if (hashtag != null && !hashtag.isBlank()) {
-            postPage = postRepository.findByIsPublicTrueAndHashtag(hashtag, pageable);
+            idPage = postRepository.findIdsByIsPublicTrueAndHashtag(hashtag, pageable);
         } else {
-            postPage = postRepository.findByIsPublicTrue(pageable);
+            idPage = postRepository.findIdsByIsPublicTrue(pageable);
         }
 
-        return postPage
+        // 해당 페이지에 데이터가 없으면 빈 결과 반환
+        if (idPage.isEmpty()) {
+            return org.springframework.data.domain.Page.empty(pageable);
+        }
+
+        java.util.List<Long> ids = idPage.getContent();
+
+        // [Optimization] 2. 실제 데이터 조회 (WHERE IN id)
+        // 주의: findAllById는 순서를 보장하지 않으므로, 아래에서 ID 순서대로 재정렬해야 함
+        java.util.List<Post> posts = postRepository.findAllById(ids);
+
+        // 3. 메모리 내 재정렬 (ID 리스트 순서에 맞춤)
+        java.util.Map<Long, Post> postMap = posts.stream()
+                .collect(java.util.stream.Collectors.toMap(Post::getId, java.util.function.Function.identity()));
+
+        java.util.List<Post> sortedPosts = ids.stream()
+                .map(postMap::get)
+                .filter(java.util.Objects::nonNull) // 혹시 모를 null 방지
+                .collect(java.util.stream.Collectors.toList());
+
+        // 4. PageImpl로 감싸서 반환 (Page 정보는 idPage의 것을 그대로 사용)
+        return new org.springframework.data.domain.PageImpl<>(sortedPosts, pageable, idPage.getTotalElements())
                 .map(post -> {
                     PostStat postStat = postStatRepository.findByPostId(post.getId())
                             .orElse(PostStat.builder().post(post).build()); // 없으면 기본값(0)

@@ -113,6 +113,7 @@ public class PinService {
             throw new IllegalArgumentException("Invalid verification code");
         }
 
+        user.removePin(); // Explicitly break relationship
         pinRepository.delete(pin);
     }
 

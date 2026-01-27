@@ -38,10 +38,9 @@ public class UserService {
         private final ThemeSettingRepository themeSettingRepository;
         private final MenuSettingRepository menuSettingRepository;
         private final com.project.byeoryback.domain.setting.widget.repository.WidgetSettingRepository widgetSettingRepository;
-        private final com.project.byeoryback.domain.setting.header.repository.HeaderSettingRepository headerSettingRepository; // Added
-                                                                                                                               // for
-                                                                                                                               // deletion
-        private final QuestLogRepository questLogRepository; // Added for deletion
+        private final com.project.byeoryback.domain.setting.widget.repository.WidgetPresetRepository widgetPresetRepository;
+        private final com.project.byeoryback.domain.setting.header.repository.HeaderSettingRepository headerSettingRepository;
+        private final QuestLogRepository questLogRepository;
 
         private final AlbumRepository albumRepository;
         private final RoomRepository roomRepository;
@@ -198,7 +197,8 @@ public class UserService {
                 themeSettingRepository.deleteByUserId(userId);
                 menuSettingRepository.deleteByUserId(userId);
                 widgetSettingRepository.deleteByUser(user);
-                headerSettingRepository.deleteByUser(user); // Added deletion
+                widgetPresetRepository.deleteByUser(user); // Delete widget presets
+                headerSettingRepository.deleteByUser(user);
 
                 // 5. Delete Albums and Folders
                 albumRepository.deleteAll(albumRepository.findAllByUserId(userId));
